@@ -1,0 +1,578 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#1f4e5f">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Kingsway">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="icon-192.png">
+<link rel="icon" href="icon-192.png">
+<title>Kingsway Dashboard</title>
+<style>
+  :root {
+    --bg:#f7f6f2; --panel:#ffffff; --fg:#1d2327; --muted:#6b7378; --line:#e3e1da;
+    --accent:#1f4e5f; --c0:#2a7f99; --c1:#d1704a; --c2:#6f8f3a; --muted-bar:#c9c6bd;
+    --ok:#2f7d45; --bad:#b3261e; --warn:#9a6400; --grid:#ecebe6;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root { --bg:#141718; --panel:#1d2123; --fg:#eceeef; --muted:#9aa3a8; --line:#2e3437;
+            --accent:#7fb7c9; --c0:#5fb4cf; --c1:#ee9672; --c2:#9cc063; --muted-bar:#4a5155;
+            --ok:#6cc487; --bad:#f2827a; --warn:#e2b35a; --grid:#262b2d; }
+  }
+  * { box-sizing:border-box; }
+  html, body { margin:0; background:var(--bg); color:var(--fg); }
+  body { font:15px/1.45 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; padding-bottom:calc(72px + env(safe-area-inset-bottom)); }
+  .wrap { max-width:72rem; margin:0 auto; padding:16px; }
+  header.top { display:flex; justify-content:space-between; align-items:flex-start; gap:12px; flex-wrap:wrap; }
+  h1 { font:400 1.45rem Georgia, "Times New Roman", serif; margin:0; }
+  h2 { font-size:1rem; font-weight:600; margin:20px 0 10px; }
+  h3 { font-size:.95rem; font-weight:600; margin:0; }
+  .muted { color:var(--muted); }
+  .small { font-size:.8rem; }
+  .take { margin:8px 0 0; color:var(--muted); }
+  .take b { color:var(--fg); font-weight:600; font-variant-numeric:tabular-nums; }
+  .warn { color:var(--warn); }
+  .btn { font:inherit; font-size:.85rem; border:1px solid var(--line); background:var(--panel); color:var(--fg); border-radius:10px; padding:8px 12px; cursor:pointer; white-space:nowrap; }
+  .btn:active { opacity:.7; }
+  .notice { margin-top:12px; padding:10px 12px; border-radius:10px; border:1px solid var(--warn); color:var(--warn); font-size:.85rem; display:none; }
+  .kpis { display:grid; grid-template-columns:repeat(auto-fit, minmax(min(100%, 10rem), 1fr)); gap:10px; margin-top:16px; }
+  .tile, .card { background:var(--panel); border:1px solid var(--line); border-radius:14px; padding:14px; min-width:0; }
+  .tile .lbl { font-size:.78rem; color:var(--muted); }
+  .tile .val { font:400 1.35rem Georgia, "Times New Roman", serif; font-variant-numeric:tabular-nums; margin-top:4px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .tile .sub { font-size:.75rem; color:var(--muted); margin-top:2px; }
+  .grid { display:grid; grid-template-columns:repeat(auto-fit, minmax(min(100%, 21rem), 1fr)); gap:12px; }
+  .card + .card, .grid + .card, .card + .grid { margin-top:12px; }
+  .note { font-size:.8rem; color:var(--muted); margin:4px 0 12px; }
+  .chart { position:relative; min-height:180px; }
+  .chart svg { display:block; width:100%; }
+  .chart text { font-size:11px; fill:var(--muted); font-family:inherit; }
+  .chart text.strong { fill:var(--fg); }
+  .legend { display:flex; gap:14px; flex-wrap:wrap; font-size:.78rem; color:var(--muted); margin-bottom:8px; }
+  .legend i { display:inline-block; width:10px; height:10px; border-radius:2px; margin-right:5px; vertical-align:-1px; }
+  .tip { position:absolute; pointer-events:none; background:var(--panel); border:1px solid var(--line); border-radius:8px; box-shadow:0 4px 14px rgba(0,0,0,.15); padding:6px 9px; font-size:.78rem; white-space:nowrap; z-index:3; display:none; }
+  .tip .h { color:var(--muted); }
+  .scroll { max-height:24rem; overflow:auto; -webkit-overflow-scrolling:touch; }
+  table { width:100%; border-collapse:collapse; font-size:.8rem; font-variant-numeric:tabular-nums; }
+  th { text-align:left; font-weight:600; color:var(--muted); padding:6px 8px; border-bottom:1px solid var(--line); position:sticky; top:0; background:var(--panel); white-space:nowrap; }
+  td { padding:6px 8px; border-bottom:1px solid var(--line); vertical-align:top; }
+  .n, .d { text-align:right; white-space:nowrap; }
+  .d { text-align:left; }
+  tr.total td { font-weight:600; border-bottom:0; }
+  tr.open td { color:var(--muted); font-style:italic; }
+  .wraptxt { min-width:11rem; }
+  .stmt { display:grid; grid-template-columns:1fr auto; row-gap:6px; column-gap:12px; font-variant-numeric:tabular-nums; margin-top:10px; }
+  .stmt .r { text-align:right; }
+  .stmt .line { grid-column:1/-1; border-top:1px solid var(--line); }
+  .stmt .big { font:400 1.3rem Georgia, "Times New Roman", serif; }
+  .in { color:var(--ok); } .out { color:var(--bad); }
+  .pills { display:flex; gap:6px; flex-wrap:wrap; margin:0 0 10px; }
+  .pill { font:inherit; font-size:.8rem; border:1px solid var(--line); background:var(--panel); color:var(--muted); border-radius:999px; padding:6px 12px; cursor:pointer; }
+  .pill[aria-pressed=true] { color:var(--panel); background:var(--accent); border-color:var(--accent); }
+  input.search { width:100%; max-width:22rem; font:inherit; font-size:.85rem; padding:8px 10px; border:1px solid var(--line); border-radius:10px; background:var(--bg); color:var(--fg); margin-bottom:10px; }
+  .page[hidden] { display:none; }
+  nav.tabs { position:fixed; left:0; right:0; bottom:0; display:flex; background:var(--panel); border-top:1px solid var(--line); padding-bottom:env(safe-area-inset-bottom); z-index:5; }
+  nav.tabs button { flex:1; font:inherit; font-size:.72rem; background:none; border:0; color:var(--muted); padding:10px 4px 12px; cursor:pointer; }
+  nav.tabs button svg { display:block; margin:0 auto 3px; width:22px; height:22px; stroke:currentColor; fill:none; stroke-width:1.8; stroke-linecap:round; stroke-linejoin:round; }
+  nav.tabs button[aria-selected=true] { color:var(--accent); font-weight:600; }
+  @media (min-width: 900px) {
+    body { padding-bottom:0; }
+    nav.tabs { position:static; justify-content:flex-start; gap:4px; border:0; border-bottom:1px solid var(--line); background:none; margin-top:16px; }
+    nav.tabs button { flex:0 0 auto; font-size:.9rem; padding:10px 14px; border-bottom:2px solid transparent; margin-bottom:-1px; }
+    nav.tabs button svg { display:none; }
+    nav.tabs button[aria-selected=true] { border-bottom-color:var(--accent); }
+  }
+  @media (max-width: 600px) { .hide-sm { display:none; } th, td { padding:6px 5px; } table { font-size:.78rem; } }
+  .loading { opacity:.5; transition:opacity .2s; }
+  .gate { max-width:28rem; margin:12vh auto 0; background:var(--panel); border:1px solid var(--line); border-radius:16px; padding:24px; }
+  .gate h1 { margin-bottom:6px; }
+  .gate p { color:var(--muted); margin:0 0 16px; }
+  .primary { display:block; width:100%; font:inherit; font-weight:600; padding:12px; border:0; border-radius:10px; background:var(--accent); color:var(--panel); cursor:pointer; }
+  .linkbtn { background:none; border:0; color:var(--accent); font:inherit; font-size:.85rem; padding:8px 0; cursor:pointer; text-decoration:underline; }
+  .gate .err { color:var(--bad); font-size:.85rem; margin-top:12px; white-space:pre-wrap; }
+  .gate code { font-size:.8rem; word-break:break-all; background:var(--bg); padding:2px 4px; border-radius:4px; }
+  .filelist { list-style:none; padding:0; margin:12px 0; }
+  .filelist li button { width:100%; text-align:left; font:inherit; background:var(--bg); color:var(--fg); border:1px solid var(--line); border-radius:10px; padding:10px 12px; margin-bottom:8px; cursor:pointer; }
+  .filelist small { color:var(--muted); display:block; }
+  input.text { width:100%; font:inherit; font-size:.9rem; padding:10px; border:1px solid var(--line); border-radius:10px; background:var(--bg); color:var(--fg); margin:6px 0 10px; }
+  .spinner { width:28px; height:28px; border:3px solid var(--line); border-top-color:var(--accent); border-radius:50%; margin:24px auto; animation:spin 1s linear infinite; }
+  @keyframes spin { to { transform:rotate(360deg); } }
+  [hidden] { display:none !important; }
+</style>
+</head>
+<body>
+<div class="wrap" id="gate-wrap" hidden>
+  <div class="gate" id="gate-signin" hidden>
+    <h1>Kingsway Dashboard</h1>
+    <p>Sign in with the Microsoft account that has the Kingsway workbook in OneDrive (or that it's been shared with).</p>
+    <button class="primary" id="btn-signin" type="button">Sign in with Microsoft</button>
+    <button class="linkbtn" id="btn-local" type="button">Or open a workbook saved on this device</button>
+    <div class="err" id="gate-err"></div>
+  </div>
+  <div class="gate" id="gate-setup" hidden>
+    <h1>One setting missing</h1>
+    <p>Put your app's <b>Application (client) ID</b> into <code>config.js</code>. Register this exact address as a <b>Single-page application</b> redirect URI:</p>
+    <p><code id="setup-uri"></code></p>
+    <button class="linkbtn" id="btn-local2" type="button">Open a workbook saved on this device instead</button>
+  </div>
+  <div class="gate" id="gate-file" hidden>
+    <h1>Choose the workbook</h1>
+    <p id="file-intro">Pick the Kingsway Finance workbook from your OneDrive.</p>
+    <ul class="filelist" id="file-list"></ul>
+    <label class="small muted" for="share-link">Or paste the OneDrive link someone shared with you:</label>
+    <input class="text" id="share-link" type="url" placeholder="https://1drv.ms/x/...">
+    <button class="primary" id="btn-share" type="button">Use this link</button>
+    <button class="linkbtn" id="btn-signout2" type="button">Sign out</button>
+    <div class="err" id="file-err"></div>
+  </div>
+  <div class="gate" id="gate-busy" hidden>
+    <h1>Kingsway Dashboard</h1>
+    <p id="busy-text">Reading the latest workbook from OneDrive…</p>
+    <div class="spinner"></div>
+  </div>
+</div>
+<input type="file" id="local-file" accept=".xlsx" hidden>
+<div class="wrap" id="app" hidden>
+  <header class="top">
+    <div>
+      <h1>Kingsway income &amp; expenses</h1>
+      <div class="small muted" id="stamp">Loading…</div>
+    </div>
+    <div style="display:flex; gap:6px">
+      <button class="btn" id="refresh" type="button" aria-label="Refresh data">↻ Refresh</button>
+      <button class="btn" id="btn-file" type="button">File</button>
+      <button class="btn" id="btn-signout" type="button">Sign out</button>
+    </div>
+  </header>
+  <p class="take" id="takeaway"></p>
+  <div class="notice" id="notice"></div>
+
+  <nav class="tabs" role="tablist" aria-label="Pages">
+    <button role="tab" data-page="overview" aria-selected="true"><svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="9" rx="1.5"/><rect x="14" y="3" width="7" height="5" rx="1.5"/><rect x="14" y="12" width="7" height="9" rx="1.5"/><rect x="3" y="16" width="7" height="5" rx="1.5"/></svg>Overview</button>
+    <button role="tab" data-page="balances" aria-selected="false"><svg viewBox="0 0 24 24"><rect x="2.5" y="6" width="19" height="13" rx="2"/><path d="M2.5 10h19M7 15h3"/></svg>Balances</button>
+    <button role="tab" data-page="history" aria-selected="false"><svg viewBox="0 0 24 24"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/></svg>Income</button>
+    <button role="tab" data-page="details" aria-selected="false"><svg viewBox="0 0 24 24"><path d="M8 6h13M8 12h13M8 18h13M3.5 6h.01M3.5 12h.01M3.5 18h.01"/></svg>Details</button>
+  </nav>
+
+  <!-- OVERVIEW -->
+  <section class="page" id="overview">
+    <div class="kpis">
+      <div class="tile"><div class="lbl">Total income</div><div class="val" id="k-income">—</div><div class="sub">Dated collections</div></div>
+      <div class="tile"><div class="lbl">Paid expenses</div><div class="val" id="k-expenses">—</div><div class="sub">Only marked Paid</div></div>
+      <div class="tile"><div class="lbl">Net</div><div class="val" id="k-net">—</div><div class="sub">Income − expenses</div></div>
+      <div class="tile"><div class="lbl">Closing balance</div><div class="val" id="k-closing">—</div><div class="sub">Cash + Bank + Easypaisa</div></div>
+      <div class="tile"><div class="lbl">Discounts</div><div class="val" id="k-discounts">—</div><div class="sub">On BSN collections</div></div>
+    </div>
+    <h2>Where money came from and went</h2>
+    <div class="grid">
+      <div class="card"><h3>Income vs expenses by day</h3><p class="note">Daily totals across all accounts.</p>
+        <div class="legend"><span><i style="background:var(--c0)"></i>Income</span><span><i style="background:var(--c1)"></i>Expenses</span></div>
+        <div class="chart" id="ch-daily"></div></div>
+      <div class="card"><h3>Income by source</h3><p class="note">BSN, Category B and fines.</p><div class="chart" id="ch-source"></div></div>
+      <div class="card"><h3>Expenses by category</h3><p class="note">Paid expenses only.</p><div class="chart" id="ch-category"></div></div>
+    </div>
+    <div class="card"><h3>Challans awaiting verification</h3><p class="note">Marked paid but not yet confirmed against the bank statement. Amounts in Rs.</p>
+      <div class="scroll"><table id="t-unverified"><thead><tr><th>Challan</th><th>Student</th><th class="hide-sm">Reference</th><th class="n">Amount</th></tr></thead><tbody></tbody></table></div></div>
+  </section>
+
+  <!-- BALANCES -->
+  <section class="page" id="balances" hidden>
+    <h2>Opening to closing, per account</h2>
+    <div class="grid" id="stmts"></div>
+    <div class="card"><h3>All accounts</h3><p class="note">Opening balance (Settings sheet) + income − paid expenses + transfers in − transfers out. Amounts in Rs.</p>
+      <div class="scroll"><table id="t-balances"><thead><tr><th>Account</th><th class="n">Opening</th><th class="n hide-sm">Income</th><th class="n hide-sm">Expenses</th><th class="n hide-sm">Transfers in</th><th class="n hide-sm">Transfers out</th><th class="n">Closing</th></tr></thead><tbody></tbody></table></div></div>
+    <h2>By day and by entry</h2>
+    <div class="pills" id="acc-pills"></div>
+    <div class="card"><h3>Opening and closing balance by day</h3><p class="note">Each day's closing is the next day's opening. Amounts in Rs.</p>
+      <div class="scroll"><table id="t-daybal"><thead><tr><th class="d">Date</th><th class="hide-sm">Account</th><th class="n">Opening</th><th class="n">In</th><th class="n">Out</th><th class="n">Closing</th></tr></thead><tbody></tbody></table></div></div>
+    <div class="card"><h3>Account statement</h3><p class="note">Every entry with the running balance. Within a day: income, then transfers, then expenses (the sheets don't record payment times). Amounts in Rs.</p>
+      <div class="scroll"><table id="t-ledger"><thead><tr><th class="d">Date</th><th class="hide-sm">Account</th><th>Type</th><th class="hide-sm">Detail</th><th class="n">In</th><th class="n">Out</th><th class="n">Balance</th></tr></thead><tbody></tbody></table></div></div>
+  </section>
+
+  <!-- INCOME OVER TIME -->
+  <section class="page" id="history" hidden>
+    <div class="kpis" id="year-tiles"></div>
+    <div class="card" style="margin-top:12px">
+      <h3 id="p-title">Income by month</h3>
+      <p class="note"><span id="p-note"></span> Table amounts in Rs.</p>
+      <div class="pills" id="grain-pills">
+        <button class="pill" data-grain="daily" aria-pressed="false">Daily</button>
+        <button class="pill" data-grain="weekly" aria-pressed="false">Weekly</button>
+        <button class="pill" data-grain="monthly" aria-pressed="true">Monthly</button>
+        <button class="pill" data-grain="yearly" aria-pressed="false">Yearly</button>
+      </div>
+      <div class="legend"><span><i style="background:var(--c0)"></i>Recorded with a date</span><span><i style="background:var(--muted-bar)"></i>Archive (estimated semester start)</span></div>
+      <div class="chart" id="ch-periods"></div>
+      <div class="scroll" style="margin-top:12px"><table id="t-periods"><thead><tr><th class="d">Period</th><th class="n">Recorded</th><th class="n">Archive (est.)</th><th class="n">Total</th></tr></thead><tbody></tbody></table></div>
+    </div>
+    <div class="card"><h3>How archive receipts are placed in time</h3>
+      <p class="note">The archive sheet has no collection dates. Each batch's first semester starts in the month of its earliest admission (or the month set in config.js), each later semester six months on, and receipts count in their semester's start month.</p>
+      <div class="scroll"><table id="t-sem"><thead><tr><th>Batch</th><th>Semester 1 starts</th><th>Based on</th></tr></thead><tbody></tbody></table></div></div>
+    <div class="card"><h3>Archived BSN collections by batch and semester</h3><p class="note" id="arch-note"></p><div class="chart" id="ch-archive"></div></div>
+  </section>
+
+  <!-- DETAILS -->
+  <section class="page" id="details" hidden>
+    <div class="card"><h3>Expense details</h3><p class="note">Every expense entry, newest first. Amounts in Rs.</p>
+      <div class="scroll"><table id="t-expenses"><thead><tr><th class="d">Date</th><th>Category</th><th>Description</th><th class="hide-sm">Paid to</th><th class="hide-sm">Account</th><th class="n">Amount</th></tr></thead><tbody></tbody></table></div></div>
+    <div class="card"><h3>Income details</h3><p class="note">Every dated fee collected, newest first. Amounts in Rs.</p>
+      <input class="search" id="search" type="search" placeholder="Search student, reg. no., source…" aria-label="Search income">
+      <div class="scroll"><table id="t-income"><thead><tr><th class="d">Date</th><th>Source</th><th>Student</th><th class="hide-sm">Reg. no.</th><th class="hide-sm">Account</th><th class="n hide-sm">Discount</th><th class="n">Collected</th></tr></thead><tbody></tbody></table></div></div>
+  </section>
+</div>
+
+<script src="config.js"></script>
+<script src="xlsx-lite.js"></script>
+<script src="compute.js"></script>
+<script src="onedrive.js"></script>
+<script>
+(() => {
+  let D = null, page = 'overview', grain = 'monthly';
+  let account = window.matchMedia('(max-width: 600px)').matches ? 'Cash' : 'All';
+  const $ = (id) => document.getElementById(id);
+  const css = (v) => getComputedStyle(document.documentElement).getPropertyValue(v).trim();
+  const nf = new Intl.NumberFormat('en-US', { maximumFractionDigits: 0 });
+  const rs = (v) => 'Rs ' + nf.format(Math.round(Number(v) || 0));
+  const rsOpt = (v) => (Number(v) ? rs(v) : '');
+  const num = (v) => nf.format(Math.round(Number(v) || 0));
+  const numOpt = (v) => (Number(v) ? num(v) : '');
+  const rsShort = (v) => 'Rs ' + new Intl.NumberFormat('en', { notation: 'compact', maximumFractionDigits: 1 }).format(Number(v) || 0);
+  const MON = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  const fDate = (s) => { if (!s) return ''; const [y, m, d] = s.split('-').map(Number); return d + ' ' + MON[m - 1] + ' ' + y; };
+  const THIS_YEAR = new Date().getFullYear();
+  const fCell = (s) => { if (!s) return ''; const [y, m, d] = s.split('-').map(Number); return d + ' ' + MON[m - 1] + (y === THIS_YEAR ? '' : ' ' + String(y).slice(2)); };
+  const fShort = (s) => { if (!s) return ''; const [y, m, d] = s.split('-').map(Number); return d + ' ' + MON[m - 1]; };
+  const fMonth = (s) => { const [y, m] = s.split('-').map(Number); return MON[m - 1] + ' ' + y; };
+  const fMonthTick = (s) => { const [y, m] = s.split('-').map(Number); return MON[m - 1] + ' ' + String(y).slice(2); };
+  const periodLabel = { daily: fDate, weekly: (s) => 'Week of ' + fDate(s), monthly: fMonth, yearly: (s) => s };
+  const periodTick = { daily: fShort, weekly: fShort, monthly: fMonthTick, yearly: (s) => s };
+  const esc = (s) => String(s ?? '');
+
+  // ------------------------------------------------ tables
+  function fill(id, rows, cols, rowClass) {
+    const tb = $(id).querySelector('tbody');
+    tb.replaceChildren();
+    const ths = Array.from($(id).querySelectorAll('th'));
+    if (!rows.length) {
+      const tr = document.createElement('tr'); const td = document.createElement('td');
+      td.colSpan = ths.length; td.className = 'muted'; td.textContent = 'Nothing here yet.'; tr.appendChild(td); tb.appendChild(tr); return;
+    }
+    rows.forEach((r) => {
+      const tr = document.createElement('tr');
+      const c = rowClass && rowClass(r); if (c) tr.className = c;
+      cols.forEach(([key, fmt, cls], i) => {
+        const td = document.createElement('td');
+        td.className = (ths[i] ? ths[i].className : '') + (cls ? ' ' + cls : '');
+        td.textContent = fmt ? fmt(r[key], r) : esc(r[key]);
+        tr.appendChild(td);
+      });
+      tb.appendChild(tr);
+    });
+  }
+
+  // ------------------------------------------------ charts (plain SVG)
+  const NS = 'http://www.w3.org/2000/svg';
+  const el = (tag, attrs, parent) => { const n = document.createElementNS(NS, tag); for (const k in attrs) n.setAttribute(k, attrs[k]); if (parent) parent.appendChild(n); return n; };
+  function textWidth(svg, s) { const t = el('text', { x: -999, y: -999 }, svg); t.textContent = s; const w = t.getComputedTextLength(); t.remove(); return w; }
+  function tip(box, ev, head, lines) {
+    let t = box.querySelector('.tip'); if (!t) { t = document.createElement('div'); t.className = 'tip'; box.appendChild(t); }
+    t.replaceChildren(); const h = document.createElement('div'); h.className = 'h'; h.textContent = head; t.appendChild(h);
+    lines.forEach(([color, name, val]) => { const l = document.createElement('div');
+      if (color) { const i = document.createElement('i'); i.style.cssText = 'display:inline-block;width:8px;height:8px;border-radius:2px;margin-right:5px;background:' + color; l.appendChild(i); }
+      l.appendChild(document.createTextNode((name ? name + ': ' : '') + val)); t.appendChild(l); });
+    t.style.display = 'block';
+    const b = box.getBoundingClientRect(); const pt = ev.touches ? ev.touches[0] : ev;
+    const x = pt.clientX - b.left, y = pt.clientY - b.top;
+    t.style.left = Math.max(0, Math.min(b.width - t.offsetWidth, x + 10)) + 'px';
+    t.style.top = Math.max(0, y - t.offsetHeight - 10) + 'px';
+  }
+  const untip = (box) => { const t = box.querySelector('.tip'); if (t) t.style.display = 'none'; };
+
+  function niceMax(v) { if (v <= 0) return 1; const p = Math.pow(10, Math.floor(Math.log10(v))); const n = v / p; return (n <= 1 ? 1 : n <= 2 ? 2 : n <= 5 ? 5 : 10) * p; }
+
+  function hbar(box, rows, color) {
+    box.replaceChildren();
+    if (!rows.length) { box.innerHTML = '<p class="note">Nothing recorded yet.</p>'; return; }
+    const W = Math.max(260, box.clientWidth || 300), rowH = 30, H = rows.length * rowH + 8;
+    box.style.minHeight = H + 'px';
+    const svg = el('svg', { viewBox: `0 0 ${W} ${H}`, height: H }, box);
+    let lw = Math.min(W * 0.45, Math.max(...rows.map((r) => textWidth(svg, r.label))) + 10);
+    const vw = Math.max(...rows.map((r) => textWidth(svg, rs(r.amount)))) + 8;
+    const max = Math.max(...rows.map((r) => r.amount)) || 1;
+    const scale = (v) => Math.max(2, (v / max) * Math.max(20, W - lw - vw));
+    rows.forEach((r, i) => {
+      const g = el('g', { transform: `translate(0,${4 + i * rowH})` }, svg);
+      const t = el('text', { x: 0, y: rowH / 2, dy: '0.35em', class: 'strong' }, g); t.textContent = r.label;
+      let s = r.label; while (t.getComputedTextLength() > lw - 8 && s.length > 3) { s = s.slice(0, -1); t.textContent = s + '…'; }
+      el('rect', { x: lw, y: 6, height: rowH - 12, width: scale(r.amount), rx: 4, fill: color }, g);
+      const v = el('text', { x: lw + scale(r.amount) + 6, y: rowH / 2, dy: '0.35em' }, g); v.textContent = rs(r.amount);
+      const hit = el('rect', { x: 0, y: 0, width: W, height: rowH, fill: 'transparent' }, g);
+      const show = (ev) => tip(box, ev, r.label, [[null, '', rs(r.amount) + (r.receipts ? ' · ' + r.receipts + ' receipts' : '')]]);
+      hit.addEventListener('mousemove', show); hit.addEventListener('touchstart', show, { passive: true }); hit.addEventListener('mouseleave', () => untip(box));
+    });
+  }
+
+  function vbars(box, rows, xKey, series, tickFmt, headFmt, stack) {
+    box.replaceChildren();
+    if (!rows.length) { box.innerHTML = '<p class="note">Nothing recorded for this view yet.</p>'; return; }
+    const W = Math.max(260, box.clientWidth || 300), H = 220, mb = 22, mt = 8;
+    const svg = el('svg', { viewBox: `0 0 ${W} ${H}`, height: H }, box);
+    const maxV = niceMax(Math.max(...rows.map((r) => stack ? series.reduce((a, s) => a + (r[s.key] || 0), 0) : Math.max(...series.map((s) => r[s.key] || 0)))));
+    const ticks = [0, .25, .5, .75, 1].map((f) => f * maxV);
+    const ml = Math.max(...ticks.map((t) => textWidth(svg, rsShort(t)))) + 8;
+    const y = (v) => (H - mb) - (v / maxV) * (H - mb - mt);
+    ticks.forEach((t) => {
+      el('line', { x1: ml, x2: W, y1: y(t), y2: y(t), stroke: css('--grid') }, svg);
+      const tx = el('text', { x: ml - 6, y: y(t), dy: '0.35em', 'text-anchor': 'end' }, svg); tx.textContent = rsShort(t);
+    });
+    const step = (W - ml) / rows.length, bw = Math.min(32, step * 0.7);
+    const lbl = Math.max(...rows.map((r) => textWidth(svg, tickFmt(r[xKey])))) + 10;
+    const every = Math.max(1, Math.ceil(lbl / step));
+    rows.forEach((r, i) => {
+      const x0 = ml + i * step;
+      if (i % every === 0) { const tx = el('text', { x: x0 + step / 2, y: H - 6, 'text-anchor': 'middle' }, svg); tx.textContent = tickFmt(r[xKey]); }
+      if (stack) {
+        let base = 0;
+        series.forEach((s, si) => {
+          const v = r[s.key] || 0; if (!v) return;
+          const top = series.slice(si + 1).every((t) => !(r[t.key] > 0));
+          el('rect', { x: x0 + (step - bw) / 2, width: bw, y: y(base + v), height: Math.max(0, y(base) - y(base + v)), rx: top ? 3 : 0, fill: s.color }, svg);
+          base += v;
+        });
+      } else {
+        const inner = bw / series.length;
+        series.forEach((s, si) => {
+          const v = r[s.key] || 0;
+          el('rect', { x: x0 + (step - bw) / 2 + si * inner + 1, width: Math.max(1, inner - 2), y: y(v), height: Math.max(0, y(0) - y(v)), rx: 3, fill: s.color }, svg);
+        });
+      }
+      const hit = el('rect', { x: x0, y: 0, width: step, height: H - mb, fill: 'transparent' }, svg);
+      const show = (ev) => { const lines = series.map((s) => [s.color, s.name, rs(r[s.key])]);
+        if (stack) lines.push([null, 'Total', rs(series.reduce((a, s) => a + (r[s.key] || 0), 0))]);
+        tip(box, ev, headFmt(r[xKey]), lines); };
+      hit.addEventListener('mousemove', show); hit.addEventListener('touchstart', show, { passive: true }); hit.addEventListener('mouseleave', () => untip(box));
+    });
+    el('line', { x1: ml, x2: W, y1: y(0), y2: y(0), stroke: css('--muted') }, svg);
+  }
+
+  // ------------------------------------------------ drawing
+  function drawHeader() {
+    const k = D.kpis, p = D.period;
+    $('stamp').textContent = 'Saved ' + D.file_modified + ' · ' + D.user;
+    $('takeaway').innerHTML = '';
+    const parts = [
+      'From ', ['b', fShort(p.first)], ' to ', ['b', fDate(p.last)], ' the college took in ', ['b', rs(k.income)],
+      ' and paid out ', ['b', rs(k.expenses)], ', leaving ', ['b', rs(k.closing)], ' across all accounts.'];
+    if (k.unverified_count) parts.push(' ', ['b warn', rs(k.unverified)], ' of payments still need verifying.');
+    parts.forEach((x) => { if (typeof x === 'string') $('takeaway').appendChild(document.createTextNode(x));
+      else { const b = document.createElement('b'); b.className = x[0].replace('b', '').trim(); b.textContent = x[1]; $('takeaway').appendChild(b); } });
+    const n = $('notice'); if (D.warning) { n.textContent = D.warning; n.style.display = 'block'; } else n.style.display = 'none';
+  }
+
+  function drawOverview() {
+    const k = D.kpis;
+    $('k-income').textContent = rs(k.income); $('k-expenses').textContent = rs(k.expenses);
+    $('k-net').textContent = rs(k.net); $('k-closing').textContent = rs(k.closing); $('k-discounts').textContent = rs(k.discounts);
+    vbars($('ch-daily'), D.daily, 'date', [{ key: 'income', name: 'Income', color: css('--c0') }, { key: 'expenses', name: 'Expenses', color: css('--c1') }], fShort, fDate, false);
+    hbar($('ch-source'), D.by_source, css('--c0'));
+    hbar($('ch-category'), D.by_category, css('--c1'));
+    fill('t-unverified', D.unverified, [['challan'], ['student'], ['ref'], ['amount', num]]);
+  }
+
+  function drawBalances() {
+    const s = $('stmts'); s.replaceChildren();
+    D.balances.forEach((b) => {
+      const c = document.createElement('div'); c.className = 'card';
+      const h = document.createElement('h3'); h.textContent = b.account; c.appendChild(h);
+      const g = document.createElement('div'); g.className = 'stmt';
+      [['Opening balance', b.opening, ''], ['+ Income received', b.income, 'in'], ['− Expenses paid', b.expenses, 'out'],
+       ['+ Transfers in', b.transfers_in, 'in'], ['− Transfers out', b.transfers_out, 'out'], null, ['Closing balance', b.closing, 'big']]
+        .forEach((row) => {
+          if (!row) { const l = document.createElement('span'); l.className = 'line'; g.appendChild(l); return; }
+          const a = document.createElement('span'); a.textContent = row[0]; g.appendChild(a);
+          const v = document.createElement('span'); v.className = 'r ' + row[2]; v.textContent = rs(row[1]); g.appendChild(v);
+        });
+      c.appendChild(g); s.appendChild(c);
+    });
+    const cols = [['account'], ['opening', num], ['income', num], ['expenses', num], ['transfers_in', num], ['transfers_out', num], ['closing', num]];
+    fill('t-balances', D.balances.concat([D.balances_total]), cols, (r) => (r.account === 'Total' ? 'total' : ''));
+
+    const pills = $('acc-pills');
+    if (!pills.children.length || pills.dataset.accounts !== D.balances.map((b) => b.account).join(',')) {
+      pills.replaceChildren(); pills.dataset.accounts = D.balances.map((b) => b.account).join(',');
+      ['All'].concat(D.balances.map((b) => b.account)).forEach((a) => {
+        const b = document.createElement('button'); b.className = 'pill'; b.dataset.acc = a; b.textContent = a === 'All' ? 'All accounts' : a;
+        b.addEventListener('click', () => { account = a; draw(); }); pills.appendChild(b);
+      });
+    }
+    pills.querySelectorAll('.pill').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.acc === account)));
+    const pick = (r) => account === 'All' || r.account === account;
+    fill('t-daybal', D.daily_balances.filter(pick), [['date', fCell], ['account'], ['opening', num], ['money_in', numOpt, 'in'], ['money_out', numOpt, 'out'], ['closing', num]]);
+    fill('t-ledger', D.ledger.filter(pick), [['date', fCell], ['account'], ['type'], ['detail', null, 'wraptxt'], ['money_in', numOpt, 'in'], ['money_out', numOpt, 'out'], ['balance', num]],
+      (r) => (r.type === 'Opening balance' ? 'open' : ''));
+  }
+
+  const notes = {
+    daily: 'Dated collections per day. Archive receipts have no dates, so they can’t be shown by day.',
+    weekly: 'Dated collections per week, starting Monday. Archive receipts can’t be shown by week.',
+    monthly: 'Dated collections, plus archive receipts in their estimated semester start month.',
+    yearly: 'Dated collections, plus archive receipts in their estimated semester start year.',
+  };
+  const titles = { daily: 'Income by day', weekly: 'Income by week', monthly: 'Income by month', yearly: 'Income by year' };
+
+  function drawHistory() {
+    const tiles = $('year-tiles'); tiles.replaceChildren();
+    const mk = (lbl, val, sub) => { const t = document.createElement('div'); t.className = 'tile';
+      t.innerHTML = '<div class="lbl"></div><div class="val"></div><div class="sub"></div>';
+      t.children[0].textContent = lbl; t.children[1].textContent = rs(val); t.children[2].textContent = sub; tiles.appendChild(t); };
+    mk('All income on record', D.all_time.total, 'Dated + archive');
+    D.periods.yearly.slice().reverse().forEach((y) => mk(y.period, y.total, y.estimated ? (y.recorded ? 'Part estimated' : 'Estimated from archive') : 'Recorded'));
+    $('p-title').textContent = titles[grain]; $('p-note').textContent = notes[grain];
+    $('grain-pills').querySelectorAll('.pill').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.grain === grain)));
+    const rows = D.periods[grain];
+    vbars($('ch-periods'), rows, 'period', [{ key: 'recorded', name: 'Recorded', color: css('--c0') }, { key: 'estimated', name: 'Archive (est.)', color: css('--muted-bar') }],
+      periodTick[grain], periodLabel[grain], true);
+    fill('t-periods', rows.slice().reverse(), [['period', grain === 'monthly' ? fMonthTick : periodLabel[grain]], ['recorded', numOpt], ['estimated', numOpt], ['total', num]]);
+    fill('t-sem', D.semester_starts, [['batch'], ['start_month', fMonth], ['basis']]);
+    $('arch-note').textContent = nf.format(D.archive_count) + ' receipts, ' + rs(D.archive_total) + ', from the BSN Archive Fee Collection sheet.';
+    hbar($('ch-archive'), D.archive_by_batch, css('--c2'));
+  }
+
+  function drawDetails() {
+    fill('t-expenses', D.expenses, [['date', fCell], ['category'], ['description', null, 'wraptxt'], ['vendor'], ['account'], ['amount', num]]);
+    const q = $('search').value.trim().toLowerCase();
+    const rows = D.income.filter((r) => !q || [r.student, r.reg, r.source, r.account, r.receipt, r.remarks].join(' ').toLowerCase().includes(q));
+    fill('t-income', rows, [['date', fCell], ['source'], ['student'], ['reg'], ['account'], ['discount', numOpt], ['amount', num]]);
+  }
+
+  function draw() {
+    if (!D) return;
+    drawHeader();
+    ({ overview: drawOverview, balances: drawBalances, history: drawHistory, details: drawDetails })[page]();
+  }
+
+  // ------------------------------------------------ loading
+  const CFG = window.KINGSWAY_CONFIG || {};
+  let FILE = null, USER = '', localBuffer = null, loading = false;
+  const fmtStamp = (iso) => { const d = new Date(iso); return isNaN(d) ? '' : d.toLocaleString('en-GB', { day: 'numeric', month: 'short', year: 'numeric', hour: 'numeric', minute: '2-digit' }); };
+
+  function gate(which, text) {
+    $('app').hidden = !!which;
+    $('gate-wrap').hidden = !which;
+    ['signin', 'setup', 'file', 'busy'].forEach((g) => { $('gate-' + g).hidden = g !== which; });
+    if (which === 'busy' && text) $('busy-text').textContent = text;
+  }
+  const showErr = (id, e) => { $(id).textContent = e ? (e.message || String(e)) : ''; };
+
+  async function render(buffer, meta) {
+    const book = await window.readXlsx(buffer);
+    const data = window.kwCompute(book, CFG.semesterStarts || {});
+    data.file_modified = meta.modified;
+    data.user = meta.user;
+    data.warning = null;
+    D = data;
+    gate(null);
+    draw();
+  }
+
+  async function load() {
+    if (loading) return;
+    if (localBuffer) { return render(localBuffer.buffer, localBuffer.meta); }
+    if (!window.OneDrive.configured()) { $('setup-uri').textContent = window.OneDrive.redirectUri(); gate('setup'); return; }
+    if (!window.OneDrive.signedIn()) { gate('signin'); return; }
+    loading = true;
+    if (D) document.getElementById('app').classList.add('loading'); else gate('busy', 'Reading the latest workbook from OneDrive…');
+    try {
+      if (!USER) { try { const u = await window.OneDrive.me(); USER = u.displayName || u.userPrincipalName || u.mail || ''; } catch (e) { if (e instanceof window.OneDrive.NeedSignIn) throw e; } }
+      if (!FILE) FILE = await window.OneDrive.chooseFile();
+      if (!FILE) { loading = false; await pickFile('No Kingsway workbook was found in your OneDrive. Pick it below, or paste the link it was shared with you.'); return; }
+      const { buffer, item } = await window.OneDrive.download(FILE);
+      const by = item.lastModifiedBy && item.lastModifiedBy.user ? ' by ' + item.lastModifiedBy.user.displayName : '';
+      await render(buffer, { modified: fmtStamp(item.lastModifiedDateTime) + by + ' · ' + item.name, user: USER || 'you' });
+    } catch (e) {
+      if (e instanceof window.OneDrive.NeedSignIn) { D = null; gate('signin'); showErr('gate-err', e); }
+      else if (e.status === 404 || e.status === 403) { window.OneDrive.setFile(null); FILE = null; loading = false; await pickFile('The workbook could not be opened (' + e.message + '). Pick it again.'); return; }
+      else if (D) { const n = $('notice'); n.textContent = 'Couldn’t refresh: ' + e.message + ' Showing the last data loaded.'; n.style.display = 'block'; }
+      else { gate('signin'); showErr('gate-err', e); }
+    } finally {
+      loading = false;
+      document.getElementById('app').classList.remove('loading');
+    }
+  }
+
+  async function pickFile(intro) {
+    gate('file');
+    $('file-intro').textContent = intro || 'Pick the Kingsway Finance workbook from your OneDrive.';
+    showErr('file-err', null);
+    const ul = $('file-list'); ul.replaceChildren();
+    const li = document.createElement('li'); li.className = 'muted small'; li.textContent = 'Searching your OneDrive…'; ul.appendChild(li);
+    try {
+      let files = await window.OneDrive.searchFiles(CFG.fileNameHint || 'Kingsway');
+      if (!files.length) files = await window.OneDrive.searchFiles('xlsx');
+      ul.replaceChildren();
+      if (!files.length) { const x = document.createElement('li'); x.className = 'muted small'; x.textContent = 'No Excel workbooks found in your OneDrive.'; ul.appendChild(x); }
+      files.slice(0, 20).forEach((f) => {
+        const item = document.createElement('li'); const b = document.createElement('button'); b.type = 'button';
+        b.textContent = f.name; const sm = document.createElement('small'); sm.textContent = f.path + ' · saved ' + fmtStamp(f.modified); b.appendChild(sm);
+        b.addEventListener('click', () => { window.OneDrive.setFile(f); FILE = f; load(); });
+        item.appendChild(b); ul.appendChild(item);
+      });
+    } catch (e) {
+      if (e instanceof window.OneDrive.NeedSignIn) { gate('signin'); return; }
+      ul.replaceChildren(); showErr('file-err', e);
+    }
+  }
+
+  $('btn-signin').addEventListener('click', () => window.OneDrive.signIn());
+  $('btn-signout').addEventListener('click', () => { if (localBuffer) { localBuffer = null; D = null; load(); } else window.OneDrive.signOut(); });
+  $('btn-signout2').addEventListener('click', () => window.OneDrive.signOut());
+  $('btn-file').addEventListener('click', () => { if (localBuffer) $('local-file').click(); else pickFile(); });
+  $('btn-share').addEventListener('click', async () => {
+    const url = $('share-link').value.trim(); if (!url) return;
+    showErr('file-err', null);
+    try { const f = await window.OneDrive.fromShareLink(url); window.OneDrive.setFile(f); FILE = f; load(); }
+    catch (e) { showErr('file-err', e); }
+  });
+  ['btn-local', 'btn-local2'].forEach((id) => $(id).addEventListener('click', () => $('local-file').click()));
+  $('local-file').addEventListener('change', async (ev) => {
+    const f = ev.target.files[0]; if (!f) return;
+    try {
+      localBuffer = { buffer: await f.arrayBuffer(), meta: { modified: fmtStamp(f.lastModified) + ' · ' + f.name + ' (from this device)', user: 'this device' } };
+      await load();
+    } catch (e) { localBuffer = null; gate('signin'); showErr('gate-err', e); }
+    ev.target.value = '';
+  });
+
+  function show(p) {
+    page = p;
+    document.querySelectorAll('.page').forEach((s) => { s.hidden = s.id !== p; });
+    document.querySelectorAll('nav.tabs button').forEach((b) => b.setAttribute('aria-selected', String(b.dataset.page === p)));
+    history.replaceState(null, '', '#' + p);
+    draw();
+    window.scrollTo(0, 0);
+  }
+  document.querySelectorAll('nav.tabs button').forEach((b) => b.addEventListener('click', () => show(b.dataset.page)));
+  $('grain-pills').querySelectorAll('.pill').forEach((b) => b.addEventListener('click', () => { grain = b.dataset.grain; draw(); }));
+  $('search').addEventListener('input', () => drawDetails());
+  $('refresh').addEventListener('click', load);
+  // Re-read the workbook whenever the app comes back to the screen.
+  document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible' && D && !localBuffer) load(); });
+  let rt; window.addEventListener('resize', () => { clearTimeout(rt); rt = setTimeout(draw, 150); });
+
+  const start = location.hash.slice(1);
+  if (['overview', 'balances', 'history', 'details'].includes(start)) {
+    page = start;
+    document.querySelectorAll('.page').forEach((s) => { s.hidden = s.id !== page; });
+    document.querySelectorAll('nav.tabs button').forEach((b) => b.setAttribute('aria-selected', String(b.dataset.page === page)));
+  }
+  if ('serviceWorker' in navigator && location.protocol === 'https:') navigator.serviceWorker.register('sw.js').catch(() => {});
+  (async () => {
+    try { await window.OneDrive.handleRedirect(); }
+    catch (e) { gate('signin'); showErr('gate-err', e); return; }
+    load();
+  })();
+})();
+</script>
+</body>
+</html>
