@@ -85,54 +85,31 @@
   }
   @media (max-width: 600px) { .hide-sm { display:none; } th, td { padding:6px 5px; } table { font-size:.78rem; } }
   .loading { opacity:.5; transition:opacity .2s; }
-  .gate { max-width:28rem; margin:12vh auto 0; background:var(--panel); border:1px solid var(--line); border-radius:16px; padding:24px; }
-  .gate h1 { margin-bottom:6px; }
-  .gate p { color:var(--muted); margin:0 0 16px; }
-  .primary { display:block; width:100%; font:inherit; font-weight:600; padding:12px; border:0; border-radius:10px; background:var(--accent); color:var(--panel); cursor:pointer; }
-  .linkbtn { background:none; border:0; color:var(--accent); font:inherit; font-size:.85rem; padding:8px 0; cursor:pointer; text-decoration:underline; }
-  .gate .err { color:var(--bad); font-size:.85rem; margin-top:12px; white-space:pre-wrap; }
-  .gate code { font-size:.8rem; word-break:break-all; background:var(--bg); padding:2px 4px; border-radius:4px; }
-  .filelist { list-style:none; padding:0; margin:12px 0; }
-  .filelist li button { width:100%; text-align:left; font:inherit; background:var(--bg); color:var(--fg); border:1px solid var(--line); border-radius:10px; padding:10px 12px; margin-bottom:8px; cursor:pointer; }
-  .filelist small { color:var(--muted); display:block; }
-  input.text { width:100%; font:inherit; font-size:.9rem; padding:10px; border:1px solid var(--line); border-radius:10px; background:var(--bg); color:var(--fg); margin:6px 0 10px; }
+  .gate { max-width:26rem; margin:14vh auto 0; background:var(--panel); border:1px solid var(--line); border-radius:16px; padding:24px; }
+  .gate p { color:var(--muted); margin:6px 0 16px; }
+  .gate input { width:100%; font:inherit; padding:12px; border:1px solid var(--line); border-radius:10px; background:var(--bg); color:var(--fg); }
+  .primary { display:block; width:100%; margin-top:12px; font:inherit; font-weight:600; padding:12px; border:0; border-radius:10px; background:var(--accent); color:var(--panel); cursor:pointer; }
+  .gate .err { color:var(--bad); font-size:.85rem; margin-top:12px; }
   .spinner { width:28px; height:28px; border:3px solid var(--line); border-top-color:var(--accent); border-radius:50%; margin:24px auto; animation:spin 1s linear infinite; }
   @keyframes spin { to { transform:rotate(360deg); } }
   [hidden] { display:none !important; }
 </style>
 </head>
 <body>
-<div class="wrap" id="gate-wrap" hidden>
-  <div class="gate" id="gate-signin" hidden>
+<div class="wrap" id="gate-wrap">
+  <form class="gate" id="gate-pw" hidden>
     <h1>Kingsway Dashboard</h1>
-    <p>Sign in with the Microsoft account that has the Kingsway workbook in OneDrive (or that it's been shared with).</p>
-    <button class="primary" id="btn-signin" type="button">Sign in with Microsoft</button>
-    <button class="linkbtn" id="btn-local" type="button">Or open a workbook saved on this device</button>
-    <div class="err" id="gate-err"></div>
-  </div>
-  <div class="gate" id="gate-setup" hidden>
-    <h1>One setting missing</h1>
-    <p>Put your app's <b>Application (client) ID</b> into <code>config.js</code>. Register this exact address as a <b>Single-page application</b> redirect URI:</p>
-    <p><code id="setup-uri"></code></p>
-    <button class="linkbtn" id="btn-local2" type="button">Open a workbook saved on this device instead</button>
-  </div>
-  <div class="gate" id="gate-file" hidden>
-    <h1>Choose the workbook</h1>
-    <p id="file-intro">Pick the Kingsway Finance workbook from your OneDrive.</p>
-    <ul class="filelist" id="file-list"></ul>
-    <label class="small muted" for="share-link">Or paste the OneDrive link someone shared with you:</label>
-    <input class="text" id="share-link" type="url" placeholder="https://1drv.ms/x/...">
-    <button class="primary" id="btn-share" type="button">Use this link</button>
-    <button class="linkbtn" id="btn-signout2" type="button">Sign out</button>
-    <div class="err" id="file-err"></div>
-  </div>
-  <div class="gate" id="gate-busy" hidden>
+    <p>Enter the dashboard password. This phone remembers it.</p>
+    <input id="pw" type="password" autocomplete="current-password" placeholder="Password" required>
+    <button class="primary" type="submit">Open dashboard</button>
+    <div class="err" id="pw-err"></div>
+  </form>
+  <div class="gate" id="gate-busy">
     <h1>Kingsway Dashboard</h1>
-    <p id="busy-text">Reading the latest workbook from OneDrive…</p>
+    <p id="busy-text">Loading the latest figures…</p>
     <div class="spinner"></div>
   </div>
 </div>
-<input type="file" id="local-file" accept=".xlsx" hidden>
 <div class="wrap" id="app" hidden>
   <header class="top">
     <div>
@@ -141,8 +118,7 @@
     </div>
     <div style="display:flex; gap:6px">
       <button class="btn" id="refresh" type="button" aria-label="Refresh data">↻ Refresh</button>
-      <button class="btn" id="btn-file" type="button">File</button>
-      <button class="btn" id="btn-signout" type="button">Sign out</button>
+      <button class="btn" id="btn-lock" type="button">Lock</button>
     </div>
   </header>
   <p class="take" id="takeaway"></p>
@@ -207,7 +183,7 @@
       <div class="scroll" style="margin-top:12px"><table id="t-periods"><thead><tr><th class="d">Period</th><th class="n">Recorded</th><th class="n">Archive (est.)</th><th class="n">Total</th></tr></thead><tbody></tbody></table></div>
     </div>
     <div class="card"><h3>How archive receipts are placed in time</h3>
-      <p class="note">The archive sheet has no collection dates. Each batch's first semester starts in the month of its earliest admission (or the month set in config.js), each later semester six months on, and receipts count in their semester's start month.</p>
+      <p class="note">The archive sheet has no collection dates. Each batch's first semester starts in the month of its earliest admission (or the month set in publisher.ini), each later semester six months on, and receipts count in their semester's start month.</p>
       <div class="scroll"><table id="t-sem"><thead><tr><th>Batch</th><th>Semester 1 starts</th><th>Based on</th></tr></thead><tbody></tbody></table></div></div>
     <div class="card"><h3>Archived BSN collections by batch and semester</h3><p class="note" id="arch-note"></p><div class="chart" id="ch-archive"></div></div>
   </section>
@@ -222,10 +198,6 @@
   </section>
 </div>
 
-<script src="config.js"></script>
-<script src="xlsx-lite.js"></script>
-<script src="compute.js"></script>
-<script src="onedrive.js"></script>
 <script>
 (() => {
   let D = null, page = 'overview', grain = 'monthly';
@@ -359,7 +331,7 @@
   // ------------------------------------------------ drawing
   function drawHeader() {
     const k = D.kpis, p = D.period;
-    $('stamp').textContent = 'Saved ' + D.file_modified + ' · ' + D.user;
+    $('stamp').textContent = 'Workbook saved ' + D.file_modified;
     $('takeaway').innerHTML = '';
     const parts = [
       'From ', ['b', fShort(p.first)], ' to ', ['b', fDate(p.last)], ' the college took in ', ['b', rs(k.income)],
@@ -453,96 +425,65 @@
   }
 
   // ------------------------------------------------ loading
-  const CFG = window.KINGSWAY_CONFIG || {};
-  let FILE = null, USER = '', localBuffer = null, loading = false;
+  const PWKEY = 'kw.pw';
+  let loading = false;
+  const getPw = () => { try { return localStorage.getItem(PWKEY) || ''; } catch (e) { return ''; } };
+  const setPw = (v) => { try { if (v) localStorage.setItem(PWKEY, v); else localStorage.removeItem(PWKEY); } catch (e) { /* private mode */ } };
+  let sessionPw = getPw();
+  const b64 = (s) => Uint8Array.from(atob(s), (c) => c.charCodeAt(0));
   const fmtStamp = (iso) => { const d = new Date(iso); return isNaN(d) ? '' : d.toLocaleString('en-GB', { day: 'numeric', month: 'short', year: 'numeric', hour: 'numeric', minute: '2-digit' }); };
 
   function gate(which, text) {
-    $('app').hidden = !!which;
-    $('gate-wrap').hidden = !which;
-    ['signin', 'setup', 'file', 'busy'].forEach((g) => { $('gate-' + g).hidden = g !== which; });
-    if (which === 'busy' && text) $('busy-text').textContent = text;
+    $('app').hidden = !!which; $('gate-wrap').hidden = !which;
+    $('gate-pw').hidden = which !== 'pw'; $('gate-busy').hidden = which !== 'busy';
+    if (text) $('busy-text').textContent = text;
+    if (which === 'pw') setTimeout(() => $('pw').focus(), 50);
   }
-  const showErr = (id, e) => { $(id).textContent = e ? (e.message || String(e)) : ''; };
 
-  async function render(buffer, meta) {
-    const book = await window.readXlsx(buffer);
-    const data = window.kwCompute(book, CFG.semesterStarts || {});
-    data.file_modified = meta.modified;
-    data.user = meta.user;
-    data.warning = null;
-    D = data;
-    gate(null);
-    draw();
+  async function decrypt(enc, password) {
+    const base = await crypto.subtle.importKey('raw', new TextEncoder().encode(password), 'PBKDF2', false, ['deriveKey']);
+    const key = await crypto.subtle.deriveKey({ name: 'PBKDF2', salt: b64(enc.salt), iterations: enc.iter, hash: 'SHA-256' }, base,
+      { name: 'AES-GCM', length: 256 }, false, ['decrypt']);
+    const plain = await crypto.subtle.decrypt({ name: 'AES-GCM', iv: b64(enc.iv) }, key, b64(enc.ct));
+    return JSON.parse(new TextDecoder().decode(plain));
   }
 
   async function load() {
     if (loading) return;
-    if (localBuffer) { return render(localBuffer.buffer, localBuffer.meta); }
-    if (!window.OneDrive.configured()) { $('setup-uri').textContent = window.OneDrive.redirectUri(); gate('setup'); return; }
-    if (!window.OneDrive.signedIn()) { gate('signin'); return; }
+    if (!sessionPw) { gate('pw'); return; }
+    if (!window.crypto || !crypto.subtle) { gate('busy', 'This page must be opened over https (the github.io address).'); return; }
     loading = true;
-    if (D) document.getElementById('app').classList.add('loading'); else gate('busy', 'Reading the latest workbook from OneDrive…');
+    if (D) $('app').classList.add('loading'); else gate('busy', 'Loading the latest figures…');
     try {
-      if (!USER) { try { const u = await window.OneDrive.me(); USER = u.displayName || u.userPrincipalName || u.mail || ''; } catch (e) { if (e instanceof window.OneDrive.NeedSignIn) throw e; } }
-      if (!FILE) FILE = await window.OneDrive.chooseFile();
-      if (!FILE) { loading = false; await pickFile('No Kingsway workbook was found in your OneDrive. Pick it below, or paste the link it was shared with you.'); return; }
-      const { buffer, item } = await window.OneDrive.download(FILE);
-      const by = item.lastModifiedBy && item.lastModifiedBy.user ? ' by ' + item.lastModifiedBy.user.displayName : '';
-      await render(buffer, { modified: fmtStamp(item.lastModifiedDateTime) + by + ' · ' + item.name, user: USER || 'you' });
+      const r = await fetch('data.enc?t=' + Date.now(), { cache: 'no-store' });
+      if (r.status === 404) { gate('busy', 'No figures yet. The laptop publishes them a minute after setup, then whenever the workbook changes.'); return; }
+      if (!r.ok) throw new Error('Couldn’t download the figures (' + r.status + ').');
+      const enc = await r.json();
+      let data;
+      try { data = await decrypt(enc, sessionPw); }
+      catch (e) { sessionPw = ''; setPw(''); D = null; gate('pw'); $('pw-err').textContent = 'Wrong password. Try again.'; return; }
+      data.file_modified = data.file_modified + ' · updated ' + fmtStamp(data.published);
+      const ageH = (Date.now() - new Date(data.published).getTime()) / 3600000;
+      if (!data.warning && ageH > 7) data.warning = 'The laptop hasn’t sent an update since ' + fmtStamp(data.published) + '. It may be switched off; these figures are from then.';
+      D = data;
+      gate(null);
+      draw();
     } catch (e) {
-      if (e instanceof window.OneDrive.NeedSignIn) { D = null; gate('signin'); showErr('gate-err', e); }
-      else if (e.status === 404 || e.status === 403) { window.OneDrive.setFile(null); FILE = null; loading = false; await pickFile('The workbook could not be opened (' + e.message + '). Pick it again.'); return; }
-      else if (D) { const n = $('notice'); n.textContent = 'Couldn’t refresh: ' + e.message + ' Showing the last data loaded.'; n.style.display = 'block'; }
-      else { gate('signin'); showErr('gate-err', e); }
+      if (D) { const n = $('notice'); n.textContent = 'Couldn’t refresh: ' + e.message + ' Showing the last figures loaded.'; n.style.display = 'block'; }
+      else gate('busy', 'Couldn’t load the dashboard: ' + e.message + ' Check the internet connection and reopen.');
     } finally {
       loading = false;
-      document.getElementById('app').classList.remove('loading');
+      $('app').classList.remove('loading');
     }
   }
 
-  async function pickFile(intro) {
-    gate('file');
-    $('file-intro').textContent = intro || 'Pick the Kingsway Finance workbook from your OneDrive.';
-    showErr('file-err', null);
-    const ul = $('file-list'); ul.replaceChildren();
-    const li = document.createElement('li'); li.className = 'muted small'; li.textContent = 'Searching your OneDrive…'; ul.appendChild(li);
-    try {
-      let files = await window.OneDrive.searchFiles(CFG.fileNameHint || 'Kingsway');
-      if (!files.length) files = await window.OneDrive.searchFiles('xlsx');
-      ul.replaceChildren();
-      if (!files.length) { const x = document.createElement('li'); x.className = 'muted small'; x.textContent = 'No Excel workbooks found in your OneDrive.'; ul.appendChild(x); }
-      files.slice(0, 20).forEach((f) => {
-        const item = document.createElement('li'); const b = document.createElement('button'); b.type = 'button';
-        b.textContent = f.name; const sm = document.createElement('small'); sm.textContent = f.path + ' · saved ' + fmtStamp(f.modified); b.appendChild(sm);
-        b.addEventListener('click', () => { window.OneDrive.setFile(f); FILE = f; load(); });
-        item.appendChild(b); ul.appendChild(item);
-      });
-    } catch (e) {
-      if (e instanceof window.OneDrive.NeedSignIn) { gate('signin'); return; }
-      ul.replaceChildren(); showErr('file-err', e);
-    }
-  }
-
-  $('btn-signin').addEventListener('click', () => window.OneDrive.signIn());
-  $('btn-signout').addEventListener('click', () => { if (localBuffer) { localBuffer = null; D = null; load(); } else window.OneDrive.signOut(); });
-  $('btn-signout2').addEventListener('click', () => window.OneDrive.signOut());
-  $('btn-file').addEventListener('click', () => { if (localBuffer) $('local-file').click(); else pickFile(); });
-  $('btn-share').addEventListener('click', async () => {
-    const url = $('share-link').value.trim(); if (!url) return;
-    showErr('file-err', null);
-    try { const f = await window.OneDrive.fromShareLink(url); window.OneDrive.setFile(f); FILE = f; load(); }
-    catch (e) { showErr('file-err', e); }
+  $('gate-pw').addEventListener('submit', (ev) => {
+    ev.preventDefault();
+    const v = $('pw').value; if (!v) return;
+    sessionPw = v; setPw(v); $('pw').value = ''; $('pw-err').textContent = '';
+    load();
   });
-  ['btn-local', 'btn-local2'].forEach((id) => $(id).addEventListener('click', () => $('local-file').click()));
-  $('local-file').addEventListener('change', async (ev) => {
-    const f = ev.target.files[0]; if (!f) return;
-    try {
-      localBuffer = { buffer: await f.arrayBuffer(), meta: { modified: fmtStamp(f.lastModified) + ' · ' + f.name + ' (from this device)', user: 'this device' } };
-      await load();
-    } catch (e) { localBuffer = null; gate('signin'); showErr('gate-err', e); }
-    ev.target.value = '';
-  });
+  $('btn-lock').addEventListener('click', () => { sessionPw = ''; setPw(''); D = null; gate('pw'); });
 
   function show(p) {
     page = p;
@@ -557,7 +498,7 @@
   $('search').addEventListener('input', () => drawDetails());
   $('refresh').addEventListener('click', load);
   // Re-read the workbook whenever the app comes back to the screen.
-  document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible' && D && !localBuffer) load(); });
+  document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible' && D) load(); });
   let rt; window.addEventListener('resize', () => { clearTimeout(rt); rt = setTimeout(draw, 150); });
 
   const start = location.hash.slice(1);
@@ -567,11 +508,7 @@
     document.querySelectorAll('nav.tabs button').forEach((b) => b.setAttribute('aria-selected', String(b.dataset.page === page)));
   }
   if ('serviceWorker' in navigator && location.protocol === 'https:') navigator.serviceWorker.register('sw.js').catch(() => {});
-  (async () => {
-    try { await window.OneDrive.handleRedirect(); }
-    catch (e) { gate('signin'); showErr('gate-err', e); return; }
-    load();
-  })();
+  load();
 })();
 </script>
 </body>
