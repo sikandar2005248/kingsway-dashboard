@@ -66,20 +66,62 @@ def _share_token(url):
     return "u!" + b.rstrip("=").replace("/", "_").replace("+", "-")
 
 
-def _get(url):
-    req = urllib.request.Request(url, headers={"User-Agent": UA, "Accept": "*/*"})
+def _get(url, headers=None, data=None):
+    h = {"User-Agent": UA, "Accept": "*/*"}
+    h.update(headers or {})
+    req = urllib.request.Request(url, headers=h, data=data, method="POST" if data is not None else "GET")
     with urllib.request.urlopen(req, timeout=90) as r:
         return r.read(), r.headers.get("Last-Modified"), r.geturl()
+
+
+BADGER_APP_ID = "5cbed6ac-a083-4e14-b191-b4ba07653de2"   # the OneDrive website's own app id for shared links
+
+
+def _download_badger(share_url):
+    """The way onedrive.live.com itself opens an 'Anyone with the link' file: it gets an
+    anonymous guest token ("Badger") and uses it to read the shared item."""
+    body, _, _ = _get("https://api-badgerp.svc.ms/v1.0/token",
+                      {"Content-Type": "application/json"},
+                      json.dumps({"appId": BADGER_APP_ID}).encode("utf-8"))
+    token = json.loads(body.decode("utf-8"))["token"]
+    auth = {"Authorization": "Badger " + token, "Prefer": "autoredeem"}
+    share = _share_token(share_url)
+    modified = None
+    last_error = None
+    for host in ("https://my.microsoftpersonalcontent.com/_api/v2.0", "https://api.onedrive.com/v1.0"):
+        try:
+            meta_raw, _, _ = _get("%s/shares/%s/driveitem" % (host, share), dict(auth, Accept="application/json"))
+            meta = json.loads(meta_raw.decode("utf-8"))
+            if meta.get("lastModifiedDateTime"):
+                when = dt.datetime.fromisoformat(meta["lastModifiedDateTime"].replace("Z", "+00:00"))
+                modified = email.utils.format_datetime(when.astimezone(dt.timezone.utc), usegmt=True)
+            link = meta.get("@content.downloadUrl") or meta.get("@microsoft.graph.downloadUrl")
+            if link:
+                data, _, _ = _get(link)
+            else:
+                data, _, _ = _get("%s/shares/%s/driveitem/content" % (host, share), auth)
+            if data[:2] == b"PK":
+                return data, modified
+            last_error = "got something that isn't an Excel file"
+        except Exception as e:  # noqa: BLE001
+            last_error = e
+    raise RuntimeError(last_error)
 
 
 def download(share_url):
     """Try the known ways of downloading a OneDrive share link without signing in."""
     share_url = share_url.strip()
+    errors = []
+    try:
+        body, modified = _download_badger(share_url)
+        out("Downloaded workbook via OneDrive guest access (%d bytes)" % len(body))
+        return body, modified
+    except Exception as e:  # noqa: BLE001
+        errors.append("OneDrive guest access: %s" % e)
     tries = [
         ("share link + download=1", _with_param(share_url, "download", "1")),
         ("OneDrive shares API", "https://api.onedrive.com/v1.0/shares/%s/root/content" % _share_token(share_url)),
     ]
-    errors = []
     for name, url in tries:
         try:
             body, modified, final = _get(url)
