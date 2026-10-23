@@ -1,0 +1,46 @@
+name: Update dashboard data
+
+on:
+  schedule:
+    - cron: "*/15 * * * *"   # every 15 minutes (GitHub may run it a few minutes late)
+  workflow_dispatch:           # "Run workflow" button for an update right now
+
+permissions:
+  contents: write
+
+concurrency:
+  group: update-data
+  cancel-in-progress: false
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install packages
+        run: pip install --disable-pip-version-check -q openpyxl cryptography
+
+      - name: Read OneDrive workbook and build data.enc
+        id: build
+        env:
+          ONEDRIVE_URL: ${{ secrets.ONEDRIVE_URL }}
+          DASHBOARD_PASSWORD: ${{ secrets.DASHBOARD_PASSWORD }}
+          SEMESTER_STARTS: ${{ vars.SEMESTER_STARTS }}
+        run: python publisher/cloud_publish.py
+
+      - name: Save to the website
+        if: steps.build.outputs.changed == 'true'
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add data.enc data.ver
+          git commit -m "Update dashboard data"
+          git push
