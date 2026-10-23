@@ -456,7 +456,7 @@
     if (D) $('app').classList.add('loading'); else gate('busy', 'Loading the latest figures…');
     try {
       const r = await fetch('data.enc?t=' + Date.now(), { cache: 'no-store' });
-      if (r.status === 404) { gate('busy', 'No figures yet. The laptop publishes them a minute after setup, then whenever the workbook changes.'); return; }
+      if (r.status === 404) { gate('busy', 'No figures yet. They appear within about 15 minutes of setup, then whenever the workbook changes.'); return; }
       if (!r.ok) throw new Error('Couldn’t download the figures (' + r.status + ').');
       const enc = await r.json();
       let data;
@@ -464,7 +464,7 @@
       catch (e) { sessionPw = ''; setPw(''); D = null; gate('pw'); $('pw-err').textContent = 'Wrong password. Try again.'; return; }
       data.file_modified = data.file_modified + ' · updated ' + fmtStamp(data.published);
       const ageH = (Date.now() - new Date(data.published).getTime()) / 3600000;
-      if (!data.warning && ageH > 7) data.warning = 'The laptop hasn’t sent an update since ' + fmtStamp(data.published) + '. It may be switched off; these figures are from then.';
+      if (!data.warning && ageH > 7) data.warning = 'No automatic update since ' + fmtStamp(data.published) + '. These figures are from then; check the Actions tab on GitHub.';
       D = data;
       gate(null);
       draw();
